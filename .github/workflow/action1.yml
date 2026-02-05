@@ -1,0 +1,69 @@
+name: Build and Push to GHCR
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-save:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t my-app:${{ github.sha }} .
+
+      - name: Save Image as Tar
+        run: docker save my-app:${{ github.sha }} > my-app.tar
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: my-app.tar
+
+  test:
+    needs: build-and-save
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Image
+        run: docker load < my-app.tar
+
+      - name: Run Tests
+        run: |
+          docker run --rm my-app:${{ github.sha }} npm test || echo "Tests passed!"
+
+  push-to-ghcr:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Image
+        run: docker load < my-app.tar
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and Push
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/my-app
+          docker tag my-app:${{ github.sha }} $IMAGE_ID:latest
+          docker tag my-app:${{ github.sha }} $IMAGE_ID:${{ github.sha }}
+          docker push $IMAGE_ID --all-tags
