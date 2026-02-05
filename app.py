@@ -7,5 +7,5 @@ def hello():
     return "Flask app is alive 🧠🔥"
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=7788)
+    app.run(host="0.0.0.0", port=5000)
 
