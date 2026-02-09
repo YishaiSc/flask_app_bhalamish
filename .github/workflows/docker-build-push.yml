@@ -1,0 +1,48 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main  # הפעולה תופעל על כל push ל-main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write  # מאפשר push ל-GHCR
+      id-token: write
+
+    steps:
+      # 1. בדיקת קוד
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. Login ל-GHCR
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. הגדרת שם התמונה וה־tag
+      - name: Set image name and tag
+        id: vars
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner | lower }}/flask_app
+          COMMIT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+          echo "COMMIT_TAG=$COMMIT_SHA" >> $GITHUB_ENV
+
+      # 4. Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t $IMAGE_NAME:latest -t $IMAGE_NAME:$COMMIT_TAG .
+
+      # 5. Push Docker image
+      - name: Push Docker image to GHCR
+        run: |
+          docker push $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:$COMMIT_TAG
