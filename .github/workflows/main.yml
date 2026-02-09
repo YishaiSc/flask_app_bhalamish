@@ -66,7 +66,6 @@ jobs:
 
       - name: Tag and Push
         run: |
-          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/my-app
-          docker tag my-app:${{ github.sha }} $IMAGE_ID:latest
-          docker tag my-app:${{ github.sha }} $IMAGE_ID:${{ github.sha }}
-          docker push $IMAGE_ID --all-tags
+          IMAGE_ID=ghcr.io/${{ github.repository_owner | lower }}/my-app
+          docker tag my-app:$(date +%s) $IMAGE_ID:latest
+          docker push $IMAGE_ID:latest
